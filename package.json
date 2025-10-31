@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:serve": "vite --host 0.0.0.0 --port 3001",
+    "start:dev": "npm run dev:serve",
+    "start:dev:bg": "sh -c 'nohup vite --host 0.0.0.0 --port 3001 > .dev.log 2>&1 & echo $! > .dev.pid'",
+    "stop:dev": "sh -c 'if [ -f .dev.pid ]; then kill $(cat .dev.pid) && rm -f .dev.pid; else if command -v lsof >/dev/null 2>&1; then PID=$(lsof -nP -iTCP:3001 -sTCP:LISTEN -t || true); if [ -n \"$PID\" ]; then kill $PID; else echo \"Nenhum PID encontrado para a porta 3001\"; fi; else echo \"lsof não encontrado\"; fi; fi'",
     "build": "vite build",
     "preview": "vite preview"
   },
