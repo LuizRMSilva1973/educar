@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { GoogleGenAI, Chat, FunctionDeclaration, Type } from "@google/genai";
 
 const API_KEY = process.env.API_KEY;
+const API_BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE) || 'http://localhost:4000';
 
 // --- App Configuration from Environment Variables --- //
 const parseCreditPackages = (str) => {
@@ -189,10 +190,10 @@ const AuthForm = ({ onLogin, onSignUp, theme, toggleTheme }) => {
             await new Promise(resolve => setTimeout(resolve, 300));
             if (isLoginView) {
                 if (!email || !password) throw new Error('Por favor, preencha todos os campos.');
-                onLogin(email, password);
+                await onLogin(email, password);
             } else {
                 if (!name || !email || !password) throw new Error('Por favor, preencha todos os campos.');
-                onSignUp(name, email, password);
+                await onSignUp(name, email, password);
             }
         } catch (err) {
             setError(err.message);
@@ -1181,14 +1182,36 @@ const App = () => {
     };
 
 
-    const handleLogin = (email, password) => {
-        const user = users.find(u => u.email === email && u.password === password);
-        if (user) {
-            setCurrentUser(user);
-            setCurrentView('dashboard'); // Reset view on login
+    const handleLogin = async (email, password) => {
+        // Tenta autenticar na API
+        try {
+            const resp = await fetch(`${API_BASE}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            if (!resp.ok) throw new Error('Email ou senha inválidos.');
+            const data = await resp.json();
+            try { localStorage.setItem('authToken', data.token); } catch {}
+            const deriveName = (e) => {
+                const local = (e || '').split('@')[0] || 'Usuário';
+                return local.charAt(0).toUpperCase() + local.slice(1);
+            };
+            const resolvedUser = { id: data.user.id, name: deriveName(data.user.email), email: data.user.email, role: data.user.role };
+            setCurrentUser(resolvedUser);
+            setCurrentView('dashboard');
             setSelectedCourseId(null);
-        } else {
-            throw new Error('Email ou senha inválidos.');
+            return;
+        } catch (err) {
+            // fallback para autenticação local caso API indisponível
+            const user = users.find(u => u.email === email && u.password === password);
+            if (user) {
+                setCurrentUser(user);
+                setCurrentView('dashboard');
+                setSelectedCourseId(null);
+                return;
+            }
+            throw err instanceof Error ? err : new Error('Falha ao autenticar');
         }
     };
 
@@ -1215,6 +1238,7 @@ const App = () => {
         setCurrentUser(null);
         localStorage.removeItem('currentView');
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('authToken');
     };
     
     const handlePurchase = (creditAmount) => {

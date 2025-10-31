@@ -34,10 +34,11 @@ Este repositório contém tudo o que você precisa para **executar localmente** 
 
 
 2. **Configurar variáveis de ambiente**
-   Crie ou edite um arquivo chamado `.env.local` e adicione sua chave de API do Gemini:
+   Crie ou edite um arquivo chamado `.env.local` com:
 
    ```env
    GEMINI_API_KEY=sua_chave_aqui
+   VITE_API_BASE=http://localhost:4000
    ```
 
 3. **Iniciar a API (SQLite) na porta 4000)**
