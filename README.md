@@ -40,7 +40,23 @@ Este repositório contém tudo o que você precisa para **executar localmente** 
    GEMINI_API_KEY=sua_chave_aqui
    ```
 
-3. **Executar o aplicativo (porta 3001)**
+3. **Iniciar a API (SQLite) na porta 4000)**
+
+   - Em foreground:
+     ```bash
+     npm run server:start
+     ```
+
+   - Em background (logs em `.api.log`, PID em `.api.pid`):
+     ```bash
+     npm run server:start:bg
+     ```
+
+   Endpoints:
+   - Health: `GET http://localhost:4000/api/health`
+   - Login: `POST http://localhost:4000/api/login` com `{ "email": "mantovani36@gmail.com", "password": "senha123" }`
+
+4. **Executar o aplicativo web (porta 3001)**
 
    - Em foreground (mostra logs no terminal):
      ```bash
@@ -52,13 +68,13 @@ Este repositório contém tudo o que você precisa para **executar localmente** 
      npm run start:dev:bg
      ```
 
-4. **Parar o servidor dev (se iniciado em background)**
+5. **Parar serviços (se iniciados em background)**
 
    ```bash
    npm run stop:dev
    ```
 
-5. **Acessar no navegador:**
+6. **Acessar no navegador:**
    [http://localhost:3001](http://localhost:3001)
 
 ---
@@ -67,8 +83,10 @@ Este repositório contém tudo o que você precisa para **executar localmente** 
 
 * Certifique-se de que sua chave do Gemini possua **cota ativa** para solicitações e testes de geração.
 * Você poderá integrar futuramente **sistemas de pagamento** (ex: Stripe, Pagar.me) e outras **APIs externas**.
-* A porta padrão está fixada em **3001** (veja `vite.config.ts`). Se a porta estiver ocupada, libere-a ou use `npm run dev` para permitir que o Vite escolha automaticamente outra porta.
+* A porta do front está fixada em **3001** (veja `vite.config.ts`). Se a porta estiver ocupada, libere-a ou use `npm run dev` para permitir que o Vite escolha automaticamente outra porta.
+* A API usa **SQLite** no arquivo `data/app.db` e roda por padrão na **porta 4000**.
 * Logs em background ficam em **.dev.log**; o PID do servidor fica em **.dev.pid**.
+* Logs da API ficam em **.api.log**; o PID da API fica em **.api.pid**.
 * Para implantação em produção, recomenda-se utilizar **VPS da Hostinger**, **Firebase Hosting** ou **Google Cloud Run**.
 
 ---

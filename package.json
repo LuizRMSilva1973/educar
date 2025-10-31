@@ -9,14 +9,19 @@
     "start:dev": "npm run dev:serve",
     "start:dev:bg": "sh -c 'nohup vite --host 0.0.0.0 --port 3001 > .dev.log 2>&1 & echo $! > .dev.pid'",
     "stop:dev": "sh -c 'if [ -f .dev.pid ]; then kill $(cat .dev.pid) && rm -f .dev.pid; else if command -v lsof >/dev/null 2>&1; then PID=$(lsof -nP -iTCP:3001 -sTCP:LISTEN -t || true); if [ -n \"$PID\" ]; then kill $PID; else echo \"Nenhum PID encontrado para a porta 3001\"; fi; else echo \"lsof não encontrado\"; fi; fi'",
+    "server:start": "node server/index.js",
+    "server:start:bg": "sh -c 'nohup node server/index.js > .api.log 2>&1 & echo $! > .api.pid'",
+    "server:stop": "sh -c 'if [ -f .api.pid ]; then kill $(cat .api.pid) && rm -f .api.pid; else if command -v lsof >/dev/null 2>&1; then PID=$(lsof -nP -iTCP:4000 -sTCP:LISTEN -t || true); if [ -n \"$PID\" ]; then kill $PID; else echo \"Nenhum PID encontrado para a porta 4000\"; fi; else echo \"lsof não encontrado\"; fi; fi'",
+    "start:full:bg": "sh -c 'npm run server:start:bg && npm run start:dev:bg'",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@google/genai": "^1.27.0",
+    "better-sqlite3": "^12.4.1",
+    "express": "^5.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "express": "^5.1.0",
     "stripe": "^19.2.0"
   },
   "devDependencies": {
