@@ -36,14 +36,20 @@ function initDb() {
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  // Garantir coluna 'name' (migracao leve)
+  const cols = db.prepare("PRAGMA table_info(users)").all();
+  const hasName = cols.some(c => c.name === 'name');
+  if (!hasName) {
+    db.exec("ALTER TABLE users ADD COLUMN name TEXT");
+  }
 
   const adminEmail = 'mantovani36@gmail.com';
   const adminPassword = 'senha123';
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(adminEmail);
   if (!existing) {
     const { salt, hash } = hashPassword(adminPassword);
-    db.prepare('INSERT INTO users (email, password_hash, password_salt, role) VALUES (?, ?, ?, ?)')
-      .run(adminEmail, hash, salt, 'admin');
+    db.prepare('INSERT INTO users (email, password_hash, password_salt, role, name) VALUES (?, ?, ?, ?, ?)')
+      .run(adminEmail, hash, salt, 'admin', 'Admin');
     console.log(`Admin criado: ${adminEmail}`);
   } else {
     console.log('Admin já existe, nenhuma ação necessária.');
@@ -74,20 +80,35 @@ app.get('/api/health', (req, res) => {
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'email e password são obrigatórios' });
-  const row = db.prepare('SELECT id, email, password_hash, password_salt, role FROM users WHERE email = ?').get(email);
+  const row = db.prepare('SELECT id, email, password_hash, password_salt, role, name FROM users WHERE email = ?').get(email);
   if (!row) return res.status(401).json({ error: 'credenciais inválidas' });
   const ok = verifyPassword(password, row.password_salt, row.password_hash);
   if (!ok) return res.status(401).json({ error: 'credenciais inválidas' });
   // Token simples (não-JWT) com HMAC para demo
   const issuedAt = Date.now();
-  const payload = Buffer.from(JSON.stringify({ sub: row.id, email: row.email, role: row.role, iat: issuedAt })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ sub: row.id, email: row.email, role: row.role, name: row.name || null, iat: issuedAt })).toString('base64url');
   const secret = process.env.AUTH_SECRET || 'dev-secret-change-me';
   const sig = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
   const token = `${payload}.${sig}`;
-  res.json({ token, user: { id: row.id, email: row.email, role: row.role } });
+  res.json({ token, user: { id: row.id, email: row.email, role: row.role, name: row.name || null } });
+});
+
+app.post('/api/signup', (req, res) => {
+  const { name, email, password } = req.body || {};
+  if (!name || !email || !password) return res.status(400).json({ error: 'name, email e password são obrigatórios' });
+  try {
+    const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (exists) return res.status(409).json({ error: 'email já cadastrado' });
+    const { salt, hash } = hashPassword(password);
+    const info = db.prepare('INSERT INTO users (name, email, password_hash, password_salt, role) VALUES (?, ?, ?, ?, ?)')
+      .run(name, email, hash, salt, 'student');
+    res.status(201).json({ id: info.lastInsertRowid, name, email, role: 'student' });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'erro ao cadastrar' });
+  }
 });
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API rodando em http://localhost:${PORT}`);
 });
-

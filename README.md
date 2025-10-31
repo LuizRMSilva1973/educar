@@ -56,6 +56,7 @@ Este repositório contém tudo o que você precisa para **executar localmente** 
    Endpoints:
    - Health: `GET http://localhost:4000/api/health`
    - Login: `POST http://localhost:4000/api/login` com `{ "email": "mantovani36@gmail.com", "password": "senha123" }`
+   - Signup: `POST http://localhost:4000/api/signup` com `{ "name": "Seu Nome", "email": "email@exemplo.com", "password": "senha" }`
 
 4. **Executar o aplicativo web (porta 3001)**
 

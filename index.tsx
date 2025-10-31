@@ -1197,7 +1197,7 @@ const App = () => {
                 const local = (e || '').split('@')[0] || 'Usuário';
                 return local.charAt(0).toUpperCase() + local.slice(1);
             };
-            const resolvedUser = { id: data.user.id, name: deriveName(data.user.email), email: data.user.email, role: data.user.role };
+            const resolvedUser = { id: data.user.id, name: data.user.name || deriveName(data.user.email), email: data.user.email, role: data.user.role };
             setCurrentUser(resolvedUser);
             setCurrentView('dashboard');
             setSelectedCourseId(null);
@@ -1215,23 +1215,40 @@ const App = () => {
         }
     };
 
-    const handleSignUp = (name, email, password) => {
-        const userExists = users.find(u => u.email === email);
-        if (userExists) {
-            throw new Error('Este email já está cadastrado.');
+    const handleSignUp = async (name, email, password) => {
+        // Tenta cadastrar na API; em caso de falha, registra localmente
+        try {
+            const resp = await fetch(`${API_BASE}/api/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password })
+            });
+            if (!resp.ok) {
+                const msg = resp.status === 409 ? 'Este email já está cadastrado.' : 'Falha ao cadastrar.';
+                throw new Error(msg);
+            }
+            const data = await resp.json();
+            const created = { id: data.id, name: data.name, email: data.email, role: data.role, credits: APP_CONFIG.newUserStartingCredits };
+            setCurrentUser(created);
+            setCurrentView('dashboard');
+            setSelectedCourseId(null);
+            return;
+        } catch (err) {
+            const userExists = users.find(u => u.email === email);
+            if (userExists) throw err instanceof Error ? err : new Error('Este email já está cadastrado.');
+            const newUser = {
+                id: Date.now(),
+                name,
+                email,
+                password,
+                role: 'student',
+                credits: APP_CONFIG.newUserStartingCredits,
+            };
+            setUsers(prevUsers => [...prevUsers, newUser]);
+            setCurrentUser(newUser);
+            setCurrentView('dashboard');
+            setSelectedCourseId(null);
         }
-        const newUser = {
-            id: Date.now(),
-            name,
-            email,
-            password,
-            role: 'student',
-            credits: APP_CONFIG.newUserStartingCredits,
-        };
-        setUsers(prevUsers => [...prevUsers, newUser]);
-        setCurrentUser(newUser);
-        setCurrentView('dashboard');
-        setSelectedCourseId(null);
     };
 
     const handleLogout = () => {
@@ -1351,7 +1368,7 @@ const App = () => {
                  <header className="header">
                   <h1>
                     {currentUser.role === 'student' ? "Portal do Aluno" : "Painel do Administrador"}
-                    <span className="user-name">| {currentUser.name}</span>
+                    <span className="user-name">| {currentUser.name} • {currentUser.email}</span>
                   </h1>
                   <div className="header-controls">
                     {currentUser.role === 'student' && <div className="user-credits">Saldo: <strong>{currentUser.credits || 0}</strong> créditos</div>}
