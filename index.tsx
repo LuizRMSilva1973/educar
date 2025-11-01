@@ -335,7 +335,7 @@ const PurchaseGadgets = ({ onPurchase, packages }) => {
                         <h3>Pacote de Créditos</h3>
                         <div className="gadget-credits">{pkg.credits}<span> créditos</span></div>
                         <div className="gadget-price">R$ {pkg.price},00</div>
-                        <button onClick={() => onPurchase(pkg.credits)}>Comprar Agora</button>
+                        <button onClick={() => onPurchase(pkg)}>Comprar Agora</button>
                     </div>
                 ))}
             </div>
@@ -1197,7 +1197,7 @@ const App = () => {
                 const local = (e || '').split('@')[0] || 'Usuário';
                 return local.charAt(0).toUpperCase() + local.slice(1);
             };
-            const resolvedUser = { id: data.user.id, name: data.user.name || deriveName(data.user.email), email: data.user.email, role: data.user.role };
+            const resolvedUser = { id: data.user.id, name: data.user.name || deriveName(data.user.email), email: data.user.email, role: data.user.role, credits: data.user.credits ?? 0 };
             setCurrentUser(resolvedUser);
             setCurrentView('dashboard');
             setSelectedCourseId(null);
@@ -1228,7 +1228,7 @@ const App = () => {
                 throw new Error(msg);
             }
             const data = await resp.json();
-            const created = { id: data.id, name: data.name, email: data.email, role: data.role, credits: APP_CONFIG.newUserStartingCredits };
+            const created = { id: data.id, name: data.name, email: data.email, role: data.role, credits: data.credits ?? APP_CONFIG.newUserStartingCredits };
             setCurrentUser(created);
             setCurrentView('dashboard');
             setSelectedCourseId(null);
@@ -1258,13 +1258,40 @@ const App = () => {
         localStorage.removeItem('authToken');
     };
     
-    const handlePurchase = (creditAmount) => {
-        const updatedUser = { ...currentUser, credits: (currentUser.credits || 0) + creditAmount };
-        setCurrentUser(updatedUser);
-        setUsers(prevUsers => prevUsers.map(user =>
-            user.id === currentUser.id ? updatedUser : user
-        ));
+    const handlePurchase = async (pkg) => {
+        try {
+            if (!currentUser) throw new Error('Você precisa estar logado.');
+            // Map pack by credits (must match server validation)
+            const pack = String(pkg.credits);
+            const resp = await fetch(`${API_BASE}/api/payments/create-checkout`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pack, userId: currentUser.id })
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.url) throw new Error(data.error || 'Falha ao iniciar pagamento');
+            window.location.href = data.url;
+        } catch (e) {
+            alert((e && e.message) || 'Erro ao redirecionar para pagamento.');
+        }
     };
+
+    // After redirect back from Stripe success, refresh user credits
+    useEffect(() => {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('checkout') === 'success' && currentUser?.id) {
+                fetch(`${API_BASE}/api/users/${currentUser.id}`)
+                    .then(r => r.ok ? r.json() : null)
+                    .then(data => {
+                        if (data && typeof data.credits === 'number') {
+                            setCurrentUser(prev => prev ? { ...prev, credits: data.credits } : prev);
+                        }
+                    })
+                    .catch(() => {});
+            }
+        } catch {}
+    }, [currentUser?.id]);
 
     const handleUseCredit = () => {
         const cost = APP_CONFIG.assistantCreditCost;
